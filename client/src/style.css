@@ -1,0 +1,53 @@
+/* body {
+    background-color: #121212;
+    color: #ffffff;
+} */
+.form-card {
+    /* background-color: #1e1e1e; */
+    /* border: 1px solid #333; */
+    border-radius: 1.25rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.form-card .form-control {
+    background-color: #2a2a2a09;
+    /* border: 1px solid #444; */
+    /* color: #ffffff; */
+}
+.form-card .form-control:focus {
+    /* background-color: #2a2a2a; */
+    border-color: #120e44;
+    /* color: #ffffff; */
+    box-shadow: 0 0 0 0.25rem rgba(8, 69, 161, 0.25);
+}
+.form-floating > label {
+    color: #aaa;
+}
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: #120e44;
+}
+.text-muted {
+    color: #999 !important;
+}
+
+.invalid-field-error {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #ff6b6b; /* Modern soft red */
+    margin-top: 0.25rem;
+    display: block; /* Ensures it shows when 'is-invalid' class is on input */
+}
+
+.btn-blue, .btn-blue:hover, .btn-blue:active{
+    background-color: #120e44;
+}
+.text-blue{
+    color: #120e44;
+}
+
+
+#sidebar{
+    height: 100vh;
+    position: fixed;
+    top: 0;
+}
