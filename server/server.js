@@ -8,9 +8,7 @@ import dotenv from "dotenv";
 
 const sessions = {};
 
-dotenv.config({
-    path: "./Authentication-System/server/.env"
-});
+dotenv.config();
 const port = process.env.PORT;
 
 let server = http.createServer((req, res) => {
@@ -52,7 +50,7 @@ let server = http.createServer((req, res) => {
                 res.end(JSON.stringify(result));
             }).catch((err) => {
                 res.statusCode = 500;
-                res.end(JSON.stringify({error: err}));
+                res.end(JSON.stringify({status: "error", error: err}));
             })
         });
         return;
@@ -73,11 +71,11 @@ let server = http.createServer((req, res) => {
                         res.end(JSON.stringify({status: "ok", data: result}));
                     });
                 }else{
-                    res.end(JSON.stringify({status: "Not Found"}));
+                    res.end(JSON.stringify({status: "error", status: "Not Found"}));
                 }
             }).catch((err) => {
                 res.statusCode = 500;
-                res.end(JSON.stringify({error: err}));
+                res.end(JSON.stringify({status: "error", error: err}));
             });
         });
         return;
@@ -152,7 +150,7 @@ let server = http.createServer((req, res) => {
         form.parse(req, (err, fields, files) => {
             if(err){
                 res.statusCode = 500;
-                res.end(JSON.stringify({error: err}));
+                res.end(JSON.stringify({status: "error", error: err}));
                 return;
             }
 
@@ -164,7 +162,7 @@ let server = http.createServer((req, res) => {
                 fs.unlink(oldImage, (err) => {
                     if(err){
                         res.statusCode = 500;
-                        res.end(JSON.stringify({error: err}));
+                        res.end(JSON.stringify({status: "error", error: err}));
                         return;
                     }
                 });
@@ -179,7 +177,7 @@ let server = http.createServer((req, res) => {
                 }
             }).catch((err) => {
                 res.statusCode = 500;
-                res.end(JSON.stringify({error: err}))
+                res.end(JSON.stringify({status: "error", error: err}))
             })
         })
         return;
@@ -222,18 +220,20 @@ let server = http.createServer((req, res) => {
         let sessionid = cookie.split("=")[1];
         actions.DeleteAccount(sessionid).then((result) => {
             res.statusCode = 200;
-            if(result){
-                let oldImage = path.join(import.meta.dirname, "../client/public/assets/profileImages/", result.profileImage);
-                if(fs.existsSync(oldImage)){
-                    fs.unlink(oldImage, (err) => {
-                        if(err){
-                            res.statusCode = 500;
-                            res.end(JSON.stringify({error: err}));
-                            return;
-                        }
-                    });
+            console.log(result);
+            if(result.res){
+                if(result.img.profileImage){
+                    let oldImage = path.join(import.meta.dirname, "../client/public/assets/profileImages/", result.img.profileImage);
+                    if(fs.existsSync(oldImage)){
+                        fs.unlink(oldImage, (err) => {
+                            if(err){
+                                res.statusCode = 500;
+                                res.end(JSON.stringify({status: "error", error: err}));
+                                return;
+                            }
+                        });
+                    }
                 }
-                console.log(img)
                 res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
                 res.end(JSON.stringify({status: "ok", msg: "account deleted"}));
             }else{

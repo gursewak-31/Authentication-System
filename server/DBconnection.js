@@ -1,9 +1,7 @@
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 
-dotenv.config({
-    path: "./Authentication-System/server/.env"
-});
+dotenv.config();
 
 let conn = null;
 export default async function DBconnection(params) {

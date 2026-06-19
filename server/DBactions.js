@@ -110,13 +110,11 @@ export async function DeleteAccount(sessionid){
     try{
         let conn = await DBconnection();
 
-        // let [res] = await conn.execute("DELETE u, ls FROM users u JOIN login_sessions ls ON ls.email = u.email AND ls.password = u.password WHERE ls.sessionId = ?", [sessionid]);
+        let [img] = await conn.execute("SELECT profileImage FROM users u JOIN login_sessions ls ON ls.email = u.email AND ls.password = u.password WHERE ls.sessionId = ?", [sessionid]);
 
-        // if(res.affectedRows){
-            let [img] = await conn.execute("SELECT profileImage FROM users u JOIN login_sessions ls ON ls.email = u.email AND ls.password = u.password WHERE ls.sessionId = ?", [sessionid]);
-        // }
+        let [res] = await conn.execute("DELETE u, ls FROM users u JOIN login_sessions ls ON ls.email = u.email AND ls.password = u.password WHERE ls.sessionId = ?", [sessionid]);
 
-        return img[0];
+        return {res: 1, img: img[0]?.profileImage}
     }catch(err){
         console.log(err)
         throw err;
