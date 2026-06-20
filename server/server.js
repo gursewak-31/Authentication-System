@@ -47,7 +47,17 @@ let server = http.createServer((req, res) => {
 
             actions.InsertUser(reqData).then((result) => {
                 res.statusCode = 200;
-                res.end(JSON.stringify(result));
+                if(result){
+                    let sessionId = crypto.randomBytes(8).toString('hex');
+                    actions.InsertSession(sessionId, reqData.email, reqData.password).then(() => {
+                        res.setHeader("Set-Cookie", `sessionId=${sessionId}; path=/; HttpOnly; SameSite=Lax`);
+                        res.end(JSON.stringify({status: "ok", msg: "sign up successful"}));
+                    }).catch((err) => {
+                        res.end(JSON.stringify({status: "error", msg: "failed to sign up, please try again."}));
+                    })
+                }else{
+                    res.end(JSON.stringify({status: "error", msg: "failed to sign up, please try again."}));
+                }
             }).catch((err) => {
                 res.statusCode = 500;
                 res.end(JSON.stringify({status: "error", error: err}));
@@ -67,7 +77,7 @@ let server = http.createServer((req, res) => {
                 if(result){
                     let sessionId = crypto.randomBytes(8).toString('hex');
                     actions.InsertSession(sessionId, result.email, result.password).then(() => {
-                        res.setHeader("Set-cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
+                        res.setHeader("Set-Cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
                         res.end(JSON.stringify({status: "ok", data: result}));
                     });
                 }else{

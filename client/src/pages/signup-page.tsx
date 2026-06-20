@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export function SignUpFrom(){
     let [firstName, setFirstName] = useState("");
@@ -10,6 +11,7 @@ export function SignUpFrom(){
     let [profileImage, setProfileImage] = useState<File | null>(null)
     let [invalidField, setInvalidField] = useState({name: false, email: false, pass: false});
     let [error, setError] = useState("");
+    let redirect = useNavigate();
 
     async function submitForm(e: React.FormEvent<HTMLFormElement>){
         e.preventDefault();
@@ -30,10 +32,17 @@ export function SignUpFrom(){
         try{
             let ajax = await fetch("http://localhost:3001/signup", {
                 method: "POST",
-                body: formData
+                body: formData,
+                credentials: "include"
             });
             let res = await ajax.json();
-            console.log(res);
+            if(res.status == "ok"){
+                redirect("/dashboard");
+            }else{
+                console.log(res);
+                setError(res.msg);
+                setTimeout(() => setError(""), 3000);
+            }
         }catch(err){
             console.log(err);
         }
@@ -179,7 +188,7 @@ export function SignUpFrom(){
                                     </div>
 
                                     {error && (
-                                        <span className="invalid-field-error ps-1">
+                                        <span className="invalid-field-error ps-1 mb-2">
                                             *{error}
                                         </span>
                                     )}

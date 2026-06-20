@@ -30,7 +30,7 @@ export function LoginForm(){
                 credentials: "include"
             });
             let res = await ajax.json();
-            if(res){
+            if(res.status == "ok"){
                 redirect("/dashboard");
                 // setData(res);
             }

@@ -17,9 +17,9 @@ export async function InsertUser(data){
     try{
         let conn = await DBconnection();
 
-        await conn.execute("INSERT INTO users (firstName, lastName, email, password, profileImage, lastUpdate) VALUES (?, ?, ?, ?, ?, NOW())", [data.firstName ?? "", data.lastName ?? "", data.email ?? "", data.password ?? "", data.profileImage ?? ""]);
+        let [res] = await conn.execute("INSERT INTO users (firstName, lastName, email, password, profileImage, lastUpdate) VALUES (?, ?, ?, ?, ?, NOW())", [data.firstName ?? "", data.lastName ?? "", data.email ?? "", data.password ?? "", data.profileImage ?? ""]);
 
-        return {status: "ok", msg: "data insert successfully"};
+        return res.affectedRows;
     }catch(err){
         console.log(err);
         throw err;
