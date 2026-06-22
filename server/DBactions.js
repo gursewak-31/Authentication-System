@@ -69,9 +69,7 @@ export async function UpdateUser(data, sessionid){
     try{
         let conn = await DBconnection();
 
-        let [res] = await conn.execute("UPDATE users SET firstName = ?, lastName = ?, email = ?, lastUpdate = NOW() WHERE id = ?", [data.firstname, data.lastname, data.email, data.id]);
-
-        let [res2] = await conn.execute("UPDATE login_sessions SET email = ? WHERE sessionId = ?", [data.email, sessionid]);
+        let [res] = await conn.execute("UPDATE users u JOIN login_sessions ls ON ls.email = u.email AND ls.password = u.password SET u.firstName = ?, u.lastName = ?, u.email = ?, u.lastUpdate = NOW(), ls.email = ? WHERE u.id = ? AND ls.sessionId = ?", [data.firstName, data.lastName, data.email, data.email, data.id, sessionid]);
 
         return res.affectedRows;
     }catch(err){

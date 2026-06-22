@@ -51,12 +51,12 @@ let server = http.createServer((req, res) => {
                     let sessionId = crypto.randomBytes(8).toString('hex');
                     actions.InsertSession(sessionId, reqData.email, reqData.password).then(() => {
                         res.setHeader("Set-Cookie", `sessionId=${sessionId}; path=/; HttpOnly; SameSite=Lax`);
-                        res.end(JSON.stringify({status: "ok", msg: "sign up successful"}));
+                        res.end(JSON.stringify({status: "ok"}));
                     }).catch((err) => {
-                        res.end(JSON.stringify({status: "error", msg: "failed to sign up, please try again."}));
+                        res.end(JSON.stringify({status: "error", error: err}));
                     })
                 }else{
-                    res.end(JSON.stringify({status: "error", msg: "failed to sign up, please try again."}));
+                    res.end(JSON.stringify({status: "error"}));
                 }
             }).catch((err) => {
                 res.statusCode = 500;

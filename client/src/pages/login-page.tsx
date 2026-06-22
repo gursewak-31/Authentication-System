@@ -7,7 +7,7 @@ export function LoginForm(){
     let [email, setEmail] = useState("");
     let [password, setPassword] = useState("");
     let [invalidField, setInvalidField] = useState({email: false, pass: false});
-    // let [error, setError] = useState("");
+    let [error, setError] = useState(false);
     let [showPassword, setShowPassword] = useState(false);
     let redirect = useNavigate();
 
@@ -29,14 +29,22 @@ export function LoginForm(){
                 ),
                 credentials: "include"
             });
+
+            if(!ajax.ok || ajax.status != 200){
+                throw new Error("request failed");
+            }
+
             let res = await ajax.json();
+
             if(res.status == "ok"){
                 redirect("/dashboard");
-                // setData(res);
+            }else{
+                setError(true);
             }
         }catch(err){
-            console.log(err);
+            setError(true);
         }
+        setTimeout(() => setError(false), 3000);
     }
 
     function checkFields(){
@@ -112,6 +120,12 @@ export function LoginForm(){
                                             </span>
                                         )}
                                     </div>
+
+                                    {error && (
+                                        <span className="invalid-field-error ps-1 mb-3">
+                                            *Invalid credentials, please try again !
+                                        </span>
+                                    )}
 
                                     {/* Forgot Password Link */}
                                     {/* <div className="text-end mb-4">
