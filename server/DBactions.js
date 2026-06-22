@@ -43,7 +43,7 @@ export async function GetUser(sessionId){
     try{
         let conn = await DBconnection();
 
-        let [res] = await conn.execute("SELECT u.* FROM users u JOIN login_sessions ls On ls.email = u.email AND ls.password = u.password WHERE ls.sessionId = ?", [sessionId]);
+        let [res] = await conn.execute("SELECT u.id, u.firstName, u.lastName, u.email, u.profileImage, u.lastUpdate FROM users u JOIN login_sessions ls On ls.email = u.email AND ls.password = u.password WHERE ls.sessionId = ?", [sessionId]);
 
         return res[0];
     }catch(err){
