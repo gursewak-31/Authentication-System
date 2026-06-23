@@ -10,7 +10,7 @@ export function SignUpFrom(){
     let [showPassword, setShowPassword] = useState(false);
     let [profileImage, setProfileImage] = useState<File | null>(null)
     let [invalidField, setInvalidField] = useState({name: false, email: false, pass: false});
-    let [error, setError] = useState(true);
+    let [error, setError] = useState("");
     let redirect = useNavigate();
 
     async function submitForm(e: React.FormEvent<HTMLFormElement>){
@@ -36,21 +36,21 @@ export function SignUpFrom(){
                 credentials: "include"
             });
 
-            if(!ajax.ok || ajax.status != 200)
-                throw new Error("request failed");
-
             let res = await ajax.json();
 
-            if(res.status == "ok"){
+            if(ajax.status === 200){
                 redirect("/dashboard");
-            }else{
-                setError(true);
+                return;
             }
+
+            if(ajax.status === 500)
+                throw new Error();
+
+            setError(res.msg);
         }catch(err){
-            console.log(err);
-            setError(true);
+            setError("Somthing went wrong. please try again later !");
         }
-        setTimeout(() => setError(false), 3000);
+        setTimeout(() => setError(""), 5000);
     }
 
     function checkFields(){
@@ -194,7 +194,7 @@ export function SignUpFrom(){
 
                                     {error && (
                                         <span className="invalid-field-error ps-1 mb-2">
-                                            *failed to sign up, please try again !
+                                            *{error}
                                         </span>
                                     )}
                                     <button type="submit" className="btn btn-blue text-white w-100 mb-4 py-2 fw-bold">
