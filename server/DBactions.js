@@ -17,6 +17,11 @@ export async function InsertUser(data){
     try{
         let conn = await DBconnection();
 
+        let [check] = await conn.execute("SELECT id FROM users WHERE email = ?", [data.email]);
+        if(check.length > 0){
+            return false;
+        }
+
         let [res] = await conn.execute("INSERT INTO users (firstName, lastName, email, password, profileImage, lastUpdate) VALUES (?, ?, ?, ?, ?, NOW())", [data.firstName ?? "", data.lastName ?? "", data.email ?? "", data.password ?? "", data.profileImage ?? ""]);
 
         return res.affectedRows;
@@ -30,7 +35,7 @@ export async function CheckUser(data){
     try{
         let conn = await DBconnection();
 
-        let [res] = await conn.execute("SELECT * FROM users WHERE email = ? AND password = ?", [data.email ?? "", data.password ?? ""]);
+        let [res] = await conn.execute("SELECT email, password FROM users WHERE email = ? AND password = ?", [data.email ?? "", data.password ?? ""]);
 
         return res[0];
     }catch(err){
@@ -91,9 +96,14 @@ export async function UpdateProfileImage(data){
     }
 }
 
-export async function ChangePassword(newpass, sessionId){
+export async function ChangePassword(currpass, newpass, sessionId){
     try{
         let conn = await DBconnection();
+
+        let [check] = await conn.execute("SELECT * FROM users WHERE password = ?", [currpass]);
+        if(!check[0]){
+            return 0;
+        }
 
         let [res] = await conn.execute("UPDATE users u JOIN login_sessions ls ON ls.email = u.email AND u.password = ls.password SET u.password = ?, ls.password = ? WHERE ls.sessionId = ?", [newpass, newpass, sessionId]);
 
@@ -112,7 +122,7 @@ export async function DeleteAccount(sessionid){
 
         let [res] = await conn.execute("DELETE u, ls FROM users u JOIN login_sessions ls ON ls.email = u.email AND ls.password = u.password WHERE ls.sessionId = ?", [sessionid]);
 
-        return {res: 1, img: img[0]?.profileImage}
+        return {res: res.affectedRows, img: img[0]?.profileImage}
     }catch(err){
         console.log(err)
         throw err;

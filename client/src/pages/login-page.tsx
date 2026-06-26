@@ -32,8 +32,8 @@ export function LoginForm(){
 
             let res = await ajax.json();
 
-            if(ajax.status === 200){
-                // redirect("/dashboard");
+            if(ajax.ok){
+                redirect("/dashboard");
                 return;
             }
 

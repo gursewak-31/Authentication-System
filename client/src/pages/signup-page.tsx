@@ -38,7 +38,7 @@ export function SignUpFrom(){
 
             let res = await ajax.json();
 
-            if(ajax.status === 200){
+            if(ajax.ok){
                 redirect("/dashboard");
                 return;
             }

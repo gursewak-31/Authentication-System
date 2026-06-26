@@ -11,7 +11,7 @@ const sessions = {};
 dotenv.config();
 const port = process.env.PORT;
 
-let server = http.createServer((req, res) => {
+let server = http.createServer( async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
@@ -25,17 +25,10 @@ let server = http.createServer((req, res) => {
     }
 
     if(req.method == "POST" && req.url == "/signup"){
-        let form = formidable({
-            uploadDir: path.join(import.meta.dirname, "../client/public/assets/profileImages/"),
-            keepExtensions: true
-        });
-
-        form.parse(req, (err, fields, files) => {
-            if(err){
-                res.statusCode = 500;
-                res.end(JSON.stringify({error: err}));
-                return;
-            }
+        try{
+            let form = await uploadMedia(req);
+            let fields = form.fields;
+            let files = form.files;
 
             let reqData = {
                 firstName: fields.firstname[0],
@@ -45,214 +38,243 @@ let server = http.createServer((req, res) => {
                 profileImage: files?.profilePhoto?.[0]?.newFilename
             }
 
-            actions.InsertUser(reqData).then((result) => {
-                res.statusCode = 200;
-                if(result){
-                    let sessionId = crypto.randomBytes(8).toString('hex');
-                    actions.InsertSession(sessionId, reqData.email, reqData.password).then(() => {
-                        res.setHeader("Set-Cookie", `sessionId=${sessionId}; path=/; HttpOnly; SameSite=Lax`);
-                        res.end(JSON.stringify({status: "ok"}));
-                    }).catch((err) => {
-                        res.end(JSON.stringify({status: "error", error: err}));
-                    })
-                }else{
-                    res.end(JSON.stringify({status: "error"}));
+            let insertUser = await actions.InsertUser(reqData);
+
+            if(!insertUser){
+                if(files?.profilePhoto?.[0].filepath){
+                    fs.unlink(files?.profilePhoto?.[0].filepath, (err) => {});
                 }
-            }).catch((err) => {
-                res.statusCode = 500;
-                res.end(JSON.stringify({status: "error", error: err}));
-            })
-        });
+                res.statusCode = 409;
+                res.end(JSON.stringify({status: "failed", msg: "Email address already exist."}));
+                return;
+            }
+
+            let sessionId = crypto.randomBytes(8).toString('hex');
+            let insterSession = await actions.InsertSession(sessionId, reqData.email, reqData.password);
+
+            res.setHeader("Set-Cookie", `sessionId=${sessionId}; path=/; HttpOnly; SameSite=Lax`);
+            res.end(JSON.stringify({status: "ok"}));
+        }catch(err){
+            console.log(err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        }
         return;
     }
 
     if(req.method == "POST" && req.url == "/login"){
-        let data = ""
-        req.on("data", chunk => data += chunk);
-        req.on("end", () => {
-            data = JSON.parse(data);
+        try{
+            let data = ""
+            req.on("data", chunk => data += chunk);
+            req.on("end", async () => {
+                data = JSON.parse(data);
 
-            actions.CheckUser(data).then((result) => {
-                res.statusCode = 200;
-                if(result){
-                    let sessionId = crypto.randomBytes(8).toString('hex');
-                    actions.InsertSession(sessionId, result.email, result.password).then(() => {
-                        res.setHeader("Set-Cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
-                        res.end(JSON.stringify({status: "ok", data: result}));
-                    });
-                }else{
-                    res.end(JSON.stringify({status: "error", status: "Not Found"}));
+                let user = await actions.CheckUser(data);
+
+                if(!user){
+                    res.statusCode = 404;
+                    res.end(JSON.stringify({status: "failed", msg: "Invalid email or password"}));
+                    return;
                 }
-            }).catch((err) => {
-                res.statusCode = 500;
-                res.end(JSON.stringify({status: "error", error: err}));
+
+                let sessionId = crypto.randomBytes(8).toString('hex');
+                await actions.InsertSession(sessionId, user.email, user.password);
+                
+                res.statusCode == 200;
+                res.setHeader("Set-Cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
+                res.end(JSON.stringify({status: "ok", data: user}));
             });
-        });
+        }catch(err){
+            res.statusCode = 500;
+            res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        }
         return;
     }
 
     if(req.method == "GET" && req.url == "/user"){
-        let cookie = req.headers.cookie;
-        if(!cookie){
-            res.statusCode = 200;
-            res.end(JSON.stringify({status: "Session Expire"}));
-            return;
-        }
-        let sessionId = cookie.split("=")[1];
-
-        actions.GetUser(sessionId).then((result) => {
-            res.statusCode = 200;
-            if(result){
-                res.end(JSON.stringify({status: "ok", data: result}));
-            }else{
-                res.end(JSON.stringify({status: "session expire or not set"}));
+        try{
+            let cookie = req.headers.cookie;
+            if(!cookie){
+                res.statusCode = 401;
+                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again!"}));
+                return;
             }
-        })
-        
+            let sessionId = cookie.split("=")[1];
+
+            let user = await actions.GetUser(sessionId);
+
+            if(!user){
+                res.statusCode = 404;
+                res.end(JSON.stringify({status: "failed", msg: "User not found"}));
+                return;
+            }
+
+            res.statusCode = 200;
+            res.end(JSON.stringify({status: "ok", data: user}));
+        }catch(err){
+            res.statusCode = 500;
+            res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        }
         return;
     }
 
     if(req.method == "POST" && req.url == "/logout"){
-        let cookie = req.headers.cookie;
-        let sessionId = cookie.split("=")[1];
-
-        actions.DeleteSession(sessionId).then((result) => {
-            res.statusCode = 200;
-            if(result){
-                res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
-                res.end(JSON.stringify({status: "ok"}));
-            }else{
-                res.end(JSON.stringify({status: "session not deleted"}));
+        try{
+            let cookie = req.headers.cookie;
+            if(!cookie){
+                res.statusCode = 401;
+                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
+                return;
             }
-        });
+            let sessionId = cookie.split("=")[1];
 
+            let d = await actions.DeleteSession(sessionId);
+
+            if(!d){
+                res.statusCode = 400;
+                res.end(JSON.stringify({status: "failed", msg: "failed to logout"}));
+                return;
+            }
+
+            res.statusCode = 200;
+            res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
+            res.end(JSON.stringify({status: "ok", msg: "logout successfuly"}));
+        }catch(err){
+            res.statusCode = 500;
+            res.end(JSON.stringify({status: "ok", msg: "Internal server error"}));
+        }
         return;
     }
 
     if(req.method == "POST" && req.url == "/updateUser"){
-        let cookie = req.headers.cookie;
-        let sessionId = cookie.split("=")[1];
-        let data = "";
-        req.on("data", chunk => data += chunk);
-        req.on("end", () => {
-            data = JSON.parse(data);
-            actions.UpdateUser(data, sessionId).then((result) => {
-                res.statusCode = 200;
-                if(result){
-                    res.end(JSON.stringify({status: "ok", msg: "Data updated successfully"}))
-                }else{
-                    res.end(JSON.stringify({status: "not update", msg: "Data not update, please try again"}));
+        try{
+            let cookie = req.headers.cookie;
+            if(!cookie){
+                res.statusCode = 401;
+                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
+                return;
+            }
+            let sessionId = cookie.split("=")[1];
+
+            let data = "";
+            req.on("data", chunk => data += chunk);
+            req.on("end", async () => {
+                data = JSON.parse(data);
+
+                let update = await actions.UpdateUser(data, sessionId);
+
+                if(!update){
+                    res.statusCode = 400;
+                    res.end(JSON.stringify({status: "failed", msg: "Failed to update data, please try again!"}));
+                    return;
                 }
-            }).catch((err) => {
-                res.statusCode = 500;
-                res.end(JSON.stringify({status: "error", error: err}));
+
+                res.statusCode = 200;
+                res.end(JSON.stringify({status: "ok", msg: "Data updated successfully"}))
             });
-        });
+        }catch(err){
+            res.statusCode == 500;
+            res.end(JSON.stringify({status: "error", msg: "Internal server error"}))
+        }
         return;
     }
 
     if(req.method == "POST" && req.url == "/updateProfileImage"){
-        let form = formidable({
-            uploadDir: path.join(import.meta.dirname, "../client/public/assets/profileImages/"),
-            keepExtensions: true
-        });
-
-        form.parse(req, (err, fields, files) => {
-            if(err){
-                res.statusCode = 500;
-                res.end(JSON.stringify({status: "error", error: err}));
-                return;
-            }
+        try{
+            let form = await uploadMedia(req);
+            let fields = form.fields;
+            let files = form.files;
 
             let id = parseInt(fields?.id?.[0]);
             let image = files?.profileImage?.[0].newFilename ?? "";
 
+            let updateImage = await actions.UpdateProfileImage({image: image, id: id});
+
+            if(!updateImage){
+                res.statusCode = 400;
+                res.end(JSON.stringify({status: "failed", msg: "Failed to update profile image."}));
+                return;
+            }
+
             let oldImage = path.join(import.meta.dirname, "../client/public/assets/profileImages/", fields?.oldImageName?.[0])
             if(fs.existsSync(oldImage)){
-                fs.unlink(oldImage, (err) => {
-                    if(err){
-                        res.statusCode = 500;
-                        res.end(JSON.stringify({status: "error", error: err}));
-                        return;
-                    }
-                });
+                fs.unlink(oldImage, (err) => {});
             }
-            
-            actions.UpdateProfileImage({image: image, id: id}).then((result) => {
-                res.statusCode = 200;
-                if(result){
-                    res.end(JSON.stringify({status: "ok", image: image}));
-                }else{
-                    res.end(JSON.stringify({status: "not update"}));
-                }
-            }).catch((err) => {
-                res.statusCode = 500;
-                res.end(JSON.stringify({status: "error", error: err}))
-            })
-        })
+
+            res.statusCode = 200;
+            res.end(JSON.stringify({status: "ok", msg: "Profile Image update successfully.", image: image}));
+        }catch(err){
+            res.statusCode = 500;
+            res.end(JSON.stringify({status: "error", msg: "Interal server error"}));
+        }
         return;
     }
 
     if(req.method == "POST" && req.url == "/changePassword"){
-        let cookie = req.headers.cookie;
-        if(!cookie){
-            res.statusCode = 200;
-            res.end(JSON.stringify({status: "Session Expire"}));
-            return;
-        }
-        let sessionid = cookie.split("=")[1];
-        let data = "";
-        req.on("data", chunk => data += chunk);
-        req.on("end", () => {
-            data = JSON.parse(data);
-            actions.ChangePassword(data.newPass, sessionid).then((result) => {
-                res.statusCode = 200;
-                if(result){
-                    res.end(JSON.stringify({status: "ok", msg: "password changed"}));
-                }else{
-                    res.end(JSON.stringify({status: "not ok", msg: "password can't changed"}));
+        try{
+            let cookie = req.headers.cookie;
+            if(!cookie){
+                res.statusCode = 401;
+                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again!"}));
+                return;
+            }
+            let sessionid = cookie.split("=")[1];
+
+            let data = "";
+            req.on("data", chunk => data += chunk);
+            req.on("end", async () => {
+                data = JSON.parse(data);
+
+                let change = await actions.ChangePassword(data.currPass, data.newPass, sessionid);
+
+                if(!change){
+                    res.statusCode = 400;
+                    res.end(JSON.stringify({status: "failed", msg: "Failed to change password !"}));
+                    return;
                 }
-            }).catch((err) => {
-                res.statusCode = 500;
-                res.end(JSON.stringify({status: "error", error: err}));
-            })
-        });
+
+                res.statusCode = 200;
+                res.end(JSON.stringify({status: "ok", msg: "Password changed successfully."}));
+            });
+        }catch(err){
+            res.statusCode = 500;
+            res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        }
         return;
     }
 
     if(req.method == "POST" && req.url == "/deleteAccount"){
-        let cookie = req.headers.cookie;
-        if(!cookie){
-            res.statusCode = 200;
-            res.end(JSON.stringify({status: "Session Expire"}));
-            return;
-        }
-        let sessionid = cookie.split("=")[1];
-        actions.DeleteAccount(sessionid).then((result) => {
-            res.statusCode = 200;
-            console.log(result);
-            if(result.res){
-                if(result.img.profileImage){
-                    let oldImage = path.join(import.meta.dirname, "../client/public/assets/profileImages/", result.img.profileImage);
-                    if(fs.existsSync(oldImage)){
-                        fs.unlink(oldImage, (err) => {
-                            if(err){
-                                res.statusCode = 500;
-                                res.end(JSON.stringify({status: "error", error: err}));
-                                return;
-                            }
-                        });
-                    }
-                }
-                res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
-                res.end(JSON.stringify({status: "ok", msg: "account deleted"}));
-            }else{
-                res.end(JSON.stringify({status: "not delete", msg: "account not deleted"}));
+        try{
+            let cookie = req.headers.cookie;
+            if(!cookie){
+                res.statusCode = 400;
+                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again!"}));
+                return;
             }
-        }).catch((err) => {
+            let sessionid = cookie.split("=")[1];
+
+            let del = await actions.DeleteAccount(sessionid);
+
+            if(!del.res){
+                res.statusCode = 400;
+                res.end(JSON.stringify({status: "failed", msg: "Failed to delete account !"}));
+                return;
+            }
+
+            if(del.img){
+                let oldImage = path.join(import.meta.dirname, "../client/public/assets/profileImages/", del.img);
+                if(fs.existsSync(oldImage)){
+                    fs.unlink(oldImage, (err) => {});
+                }
+            }
+
+            res.statusCode = 200;
+            res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
+            res.end(JSON.stringify({status: "ok", msg: "Account deleted successfully."}));
+        }catch(err){
             res.statusCode = 500;
-            res.end(JSON.stringify({status: "error", error: err}));
-        })
+            res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        }
         return;
     }
 
@@ -261,3 +283,17 @@ let server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => console.log("server start"));
+
+function uploadMedia(request){
+    let form = formidable({
+        uploadDir: path.join(import.meta.dirname, "../client/public/assets/profileImages/"),
+        keepExtensions: true
+    });
+
+    return new Promise((res, rej) => {
+        form.parse(request, (err, fields, files) => {
+            if(err) rej(err);
+            res({fields, files});
+        });
+    });
+}

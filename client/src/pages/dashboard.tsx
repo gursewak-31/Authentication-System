@@ -6,34 +6,36 @@ import { useNavigate, Link } from "react-router-dom";
 export function Dashboard(){
     let [user, setUser] = useState<User | null>(null);
     let [isModalOpen, setIsModalOpen] = useState(false);
-    let [updateRespone, setUpdateResponse] = useState<string | null>(null);
+    let [updateRespone, setUpdateResponse] = useState<{status: "success" | "failed", msg: string} | null>(null);
     let redirect = useNavigate();
 
     useEffect(() => {
-        getData();
+        (async () => {
+            try{
+                let req = await fetch("http://localhost:3001/user", {
+                        method: "GET",
+                        credentials: "include"
+                    });
+
+                let res = await req.json();
+
+                if(req.ok){
+                    setUser(res.data);
+                    return;
+                }
+                
+                redirect("/login");
+                return;
+            }catch(err){
+                redirect("/login");
+                return;
+            }
+        })();
     }, []);
 
-    async function getData(){
-        try{
-            let req = await fetch("http://localhost:3001/user", {
-                    method: "GET",
-                    credentials: "include"
-                });
-
-            if(!req.ok || req.status != 200){
-                throw new Error("request failed");
-            }
-
-            let res = await req.json();
-
-            if(res.status == "ok")
-                setUser(res.data);
-            else
-                redirect("/login");
-        }catch(err){
-            redirect("/login");
-        }
-    }
+    useEffect(() => {
+        if(updateRespone) setTimeout(() => setUpdateResponse(null), 3000);
+    }, [updateRespone])
 
     async function updateData(e: React.SubmitEvent<HTMLFormElement>){
         e.preventDefault()
@@ -47,22 +49,24 @@ export function Dashboard(){
                         credentials: "include"
                     });
 
-            if(!req.ok || req.status != 200){
-                throw new Error("request failed");
-            }
-
             let res = await req.json();
 
-            if(res.status == "ok"){
-                setUpdateResponse("success");
-                if(user) setUser({...user, lastUpdate: new Date()})
-            }else{
-                setUpdateResponse("failed");
+            if(req.status === 401){
+                setUpdateResponse({status: "failed", msg: res.msg});
+                setTimeout(() => redirect("/login"), 3000);
+                return;
             }
+
+            if(!req.ok){
+                setUpdateResponse({status: "failed", msg: res.msg});
+                return;
+            }
+
+            setUpdateResponse({status: "success", msg: res.msg});
+            if(user) setUser({...user, lastUpdate: new Date()});
         }catch(err){
-            setUpdateResponse("failed");
+            setUpdateResponse({status: "failed", msg: "Somthing went wrong. please try again later !"});
         }
-        setTimeout(() => setUpdateResponse(null), 3000);
     }
 
     async function updateProfileImage(image: File | null){
@@ -78,23 +82,18 @@ export function Dashboard(){
                         body: formData
                     });
 
-            if(!req.ok || req.status != 200){
-               throw new Error("request failed");
-            }
-
             let res = await req.json();
 
-            if(res.status == "ok"){
-                setUpdateResponse("success");
+            if(req.ok){
+                setUpdateResponse({status: "success", msg: res.msg});
                 if(user) setUser({...user, lastUpdate: new Date(), profileImage: res.image});
             }else{
-                setUpdateResponse("failed");
+                setUpdateResponse({status: "failed", msg: res.msg});
             }
         }catch(err){
-            setUpdateResponse("failed");
+            setUpdateResponse({status: "failed", msg: "Somthing went wrong. please try again later !"});
         }
         setIsModalOpen(false);
-        setTimeout(() => setUpdateResponse(null), 3000);
     }
 
     if(!user) return (<div>Loading</div>)
@@ -142,18 +141,18 @@ export function Dashboard(){
                                     <h5 className="fw-bold text-gray-800 pb-2 border-bottom">Profile Information</h5>
 
                                     {updateRespone && (
-                                        updateRespone == "success" ? (
+                                        updateRespone.status == "success" ? (
                                             <div className="d-inline-flex align-items-center bg-success-subtle text-success border border-success-subtle px-3 py-1.5 rounded-pill shadow-sm animate-fade-in"> 
                                             <span className="small fw-semibold">
                                                 <i className="bi bi-check-circle-fill me-2 fs-6"></i>
-                                                Data updated successfully
+                                                {updateRespone.msg}
                                             </span>
                                         </div>
                                         ) : (
                                             <div className="d-inline-flex align-items-center bg-danger-subtle text-danger border border-danger-subtle px-3 py-1.5 rounded-pill shadow-sm animate-fade-in">
                                                 <span className="small fw-semibold">
                                                     <i className="bi bi-exclamation-circle-fill me-2 fs-6"></i>
-                                                    Failed to update data. Please try again
+                                                    {updateRespone.msg}
                                                 </span>
                                             </div>
                                         )

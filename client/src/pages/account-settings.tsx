@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 
 export function AccountSettings(){
     let redirect = useNavigate();
-    let [originalPassword, setOriginalPassword] = useState("");
     let [currPassword, setCurrPassword] = useState("");
     let [newPassword, setNewPassword] = useState("");
     let [confPassword, setConfPassword] = useState("");
@@ -13,74 +12,76 @@ export function AccountSettings(){
     let [showNewPassword, setShowNewPassword] = useState(false);
     let [showConfPassword, setShowConfPassword] = useState(false);
     let [deleteCheck, setDeleteCheck] = useState(false);
-    let [responseMsg, setRepsonseMsg] = useState("");
-    let [responseStatus, setResponseStatus] = useState<"success" | "failed" | null>(null);
+    let [updateResponse, setUpdateResponse] = useState<{status: "success" | "failed", msg: string} | null>(null);
+    let [deleteResponse, setDeleteResponse] = useState<{status: "success" | "failed", msg: string} | null>(null);
 
-    useEffect(() => {
-        fetch("http://localhost:3001/user", {
-            method: "GET",
-            credentials: "include"
-        }).then((res) => res.json())
-        .then((d) => {
-            if(d.status == "ok"){
-               setOriginalPassword(d.data.password);
-            }else{
-                redirect("/login");
-            }
-        });
-    }, []);
-
-    function changePassword(e: React.FormEvent<HTMLFormElement>){
+    async function changePassword(e: React.FormEvent<HTMLFormElement>){
         e.preventDefault();
         if(newPassword !== confPassword){
-            setRepsonseMsg("New and Confirm password doesn't match !");
-            setResponseStatus("failed");
+            setUpdateResponse({status: "failed", msg: "New and Confirm password doesn't match!"});
             return;
         }
-        if(currPassword !== originalPassword){
-            setRepsonseMsg("Wrong Password, please check current password !");
-            setResponseStatus("failed");
+        if(!/^.{8,}$/.test(newPassword) || !/^.{8,}$/.test(confPassword)){
+            setUpdateResponse({status: "failed", msg: "Password must be at least 8 characters long."});
             return;
         }
 
-        fetch("http://localhost:3001/changePassword", {
-            credentials: "include",
-            method: "POST",
-            body: JSON.stringify({
-                newPass: newPassword
-            })
-        }).then(res => res.json())
-        .then((d) => {
-            if(d.status == "ok"){
-                setRepsonseMsg("Password update successfully");
-                setResponseStatus("success");
+        try{
+            let req = await fetch("http://localhost:3001/changePassword", {
+                        credentials: "include",
+                        method: "POST",
+                        body: JSON.stringify({
+                            newPass: newPassword,
+                            currPass: currPassword
+                        })
+                    });
+
+            let res = await req.json();
+
+            if(req.ok){
+                setUpdateResponse({status: "success", msg: res.msg})
                 setNewPassword("");
                 setCurrPassword("");
                 setConfPassword("");
-                setTimeout(() => {
-                    setRepsonseMsg("");
-                    setResponseStatus(null);
-                }, 3000);
+            }else{
+                setUpdateResponse({status: "failed", msg: res.msg});
             }
-        }).catch((err) => {
-            console.log(err)
-        })
+            if(req.status === 401){
+                setTimeout(() => redirect("/login"), 3000);
+            }
+        }catch(err){
+            setUpdateResponse({status: "success", msg: "Something went wrong, please try again!"});
+        }
     }
 
-    function deleteAccount(e: React.SubmitEvent<HTMLFormElement>){
+    async function deleteAccount(e: React.SubmitEvent<HTMLFormElement>){
         e.preventDefault();
         if(!deleteCheck) return;
+        try{
+            let req = await fetch("http://localhost:3001/deleteAccount", {
+                        method: "POST",
+                        credentials: "include"
+                    });
+            
+            let res = await req.json();
 
-        fetch("http://localhost:3001/deleteAccount", {
-            method: "POST",
-            credentials: "include"
-        }).then(res => res.json())
-        .then((d) => {
-            if(d.status == "ok"){
-                redirect("/login");
+            if(req.ok){
+                setDeleteResponse({status: "success", msg: res.msg});
+                setTimeout(() => redirect("/login"), 3000);
+            }else{
+                setDeleteResponse({status: "failed", msg: res.msg});
             }
-        })
+            if(req.status === 401){
+                setTimeout(() => redirect("/login"), 3000);
+            }
+        }catch(err){
+            setDeleteResponse({status: "failed", msg: "Something went wrong, please try again!"});
+        }
     }
+
+    useEffect(() => {
+        if(updateResponse) setTimeout(() => setUpdateResponse(null), 3000)
+    }, [updateResponse])
 
     return(
         <>
@@ -141,8 +142,8 @@ export function AccountSettings(){
                                                 </div>
                                             </div>
                                         </div>
-                                        {responseStatus && (
-                                            <div className={`form-text small ${responseStatus == "success" ? "text-success" : "text-danger"}`}>*{responseMsg}</div>
+                                        {updateResponse && (
+                                            <div className={`form-text small ${updateResponse.status == "success" ? "text-success" : "text-danger"}`}>*{updateResponse.msg}</div>
                                         )}
                                     </div>
 
@@ -172,6 +173,10 @@ export function AccountSettings(){
                                             </label>
                                         </div>
                                     </div>
+
+                                    {deleteResponse && (
+                                        <div className={`form-text small ${deleteResponse.status == "success" ? "text-success" : "text-danger"}`}>*{deleteResponse.msg}</div>
+                                    )}
 
                                     <div className="d-flex justify-content-start">
                                         <button type="submit" className="btn btn-danger px-4 shadow-sm py-2 fw-medium" disabled = {!deleteCheck}>
