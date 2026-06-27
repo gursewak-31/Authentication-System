@@ -58,6 +58,7 @@ export function Dashboard(){
             }
 
             if(!req.ok){
+                if(req.status === 500) throw new Error("server error");
                 setUpdateResponse({status: "failed", msg: res.msg});
                 return;
             }
