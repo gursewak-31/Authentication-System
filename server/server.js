@@ -80,7 +80,7 @@ let server = http.createServer( async (req, res) => {
                 let sessionId = crypto.randomBytes(8).toString('hex');
                 await actions.InsertSession(sessionId, user.email, user.password);
                 
-                res.statusCode == 200;
+                res.statusCode = 200;
                 res.setHeader("Set-Cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
                 res.end(JSON.stringify({status: "ok", data: user}));
             });
@@ -173,7 +173,7 @@ let server = http.createServer( async (req, res) => {
                 res.end(JSON.stringify({status: "ok", msg: "Data updated successfully"}))
             });
         }catch(err){
-            res.statusCode == 500;
+            res.statusCode = 500;
             res.end(JSON.stringify({status: "error", msg: "Internal server error"}))
         }
         return;
