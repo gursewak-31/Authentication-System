@@ -64,27 +64,24 @@ let server = http.createServer( async (req, res) => {
 
     if(req.method == "POST" && req.url == "/login"){
         try{
-            let data = ""
-            req.on("data", chunk => data += chunk);
-            req.on("end", async () => {
-                data = JSON.parse(data);
+            let data = await getReqData(req);
 
-                let user = await actions.CheckUser(data);
+            let user = await actions.CheckUser(data);
 
-                if(!user){
-                    res.statusCode = 404;
-                    res.end(JSON.stringify({status: "failed", msg: "Invalid email or password"}));
-                    return;
-                }
+            if(!user){
+                res.statusCode = 404;
+                res.end(JSON.stringify({status: "failed", msg: "Invalid email or password"}));
+                return;
+            }
 
-                let sessionId = crypto.randomBytes(8).toString('hex');
-                await actions.InsertSession(sessionId, user.email, user.password);
+            let sessionId = crypto.randomBytes(8).toString('hex');
+            await actions.InsertSession(sessionId, user.email, user.password);
                 
-                res.statusCode = 200;
-                res.setHeader("Set-Cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
-                res.end(JSON.stringify({status: "ok", data: user}));
-            });
+            res.statusCode = 200;
+            res.setHeader("Set-Cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
+            res.end(JSON.stringify({status: "ok", data: user}));
         }catch(err){
+            console.log(err)
             res.statusCode = 500;
             res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
         }
@@ -93,13 +90,12 @@ let server = http.createServer( async (req, res) => {
 
     if(req.method == "GET" && req.url == "/user"){
         try{
-            let cookie = req.headers.cookie;
-            if(!cookie){
+            let sessionId = getSessionId(req);
+            if(!sessionId){
                 res.statusCode = 401;
-                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again!"}));
+                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
                 return;
             }
-            let sessionId = cookie.split("=")[1];
 
             let user = await actions.GetUser(sessionId);
 
@@ -120,13 +116,12 @@ let server = http.createServer( async (req, res) => {
 
     if(req.method == "POST" && req.url == "/logout"){
         try{
-            let cookie = req.headers.cookie;
-            if(!cookie){
+            let sessionId = getSessionId(req);
+            if(!sessionId){
                 res.statusCode = 401;
                 res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
                 return;
             }
-            let sessionId = cookie.split("=")[1];
 
             let d = await actions.DeleteSession(sessionId);
 
@@ -148,30 +143,25 @@ let server = http.createServer( async (req, res) => {
 
     if(req.method == "POST" && req.url == "/updateUser"){
         try{
-            let cookie = req.headers.cookie;
-            if(!cookie){
+            let sessionId = getSessionId(req);
+            if(!sessionId){
                 res.statusCode = 401;
                 res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
                 return;
             }
-            let sessionId = cookie.split("=")[1];
 
-            let data = "";
-            req.on("data", chunk => data += chunk);
-            req.on("end", async () => {
-                data = JSON.parse(data);
+            let data = await getReqData(req);
 
-                let update = await actions.UpdateUser(data, sessionId);
+            let update = await actions.UpdateUser(data, sessionId);
 
-                if(!update){
-                    res.statusCode = 400;
-                    res.end(JSON.stringify({status: "failed", msg: "Failed to update data, please try again!"}));
-                    return;
-                }
+            if(!update){
+                res.statusCode = 400;
+                res.end(JSON.stringify({status: "failed", msg: "Failed to update data, please try again!"}));
+                return;
+            }
 
-                res.statusCode = 200;
-                res.end(JSON.stringify({status: "ok", msg: "Data updated successfully"}))
-            });
+            res.statusCode = 200;
+            res.end(JSON.stringify({status: "ok", msg: "Data updated successfully"}));
         }catch(err){
             res.statusCode = 500;
             res.end(JSON.stringify({status: "error", msg: "Internal server error"}))
@@ -212,30 +202,25 @@ let server = http.createServer( async (req, res) => {
 
     if(req.method == "POST" && req.url == "/changePassword"){
         try{
-            let cookie = req.headers.cookie;
-            if(!cookie){
+            let sessionId = getSessionId(req);
+            if(!sessionId){
                 res.statusCode = 401;
-                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again!"}));
+                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
                 return;
             }
-            let sessionid = cookie.split("=")[1];
 
-            let data = "";
-            req.on("data", chunk => data += chunk);
-            req.on("end", async () => {
-                data = JSON.parse(data);
+            let data = await getReqData(req);
+            
+            let change = await actions.ChangePassword(data.currPass, data.newPass, sessionid);
 
-                let change = await actions.ChangePassword(data.currPass, data.newPass, sessionid);
+            if(!change){
+                res.statusCode = 400;
+                res.end(JSON.stringify({status: "failed", msg: "Failed to change password !"}));
+                return;
+            }
 
-                if(!change){
-                    res.statusCode = 400;
-                    res.end(JSON.stringify({status: "failed", msg: "Failed to change password !"}));
-                    return;
-                }
-
-                res.statusCode = 200;
-                res.end(JSON.stringify({status: "ok", msg: "Password changed successfully."}));
-            });
+            res.statusCode = 200;
+            res.end(JSON.stringify({status: "ok", msg: "Password changed successfully."}));
         }catch(err){
             res.statusCode = 500;
             res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
@@ -245,13 +230,12 @@ let server = http.createServer( async (req, res) => {
 
     if(req.method == "POST" && req.url == "/deleteAccount"){
         try{
-            let cookie = req.headers.cookie;
-            if(!cookie){
-                res.statusCode = 400;
-                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again!"}));
+            let sessionId = getSessionId(req);
+            if(!sessionId){
+                res.statusCode = 401;
+                res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
                 return;
             }
-            let sessionid = cookie.split("=")[1];
 
             let del = await actions.DeleteAccount(sessionid);
 
@@ -295,5 +279,28 @@ function uploadMedia(request){
             if(err) rej(err);
             res({fields, files});
         });
+    });
+}
+
+function getSessionId(request){
+    let cookie = request.headers.cookie;
+
+    if(!cookie) return null;
+
+    return cookie.split("=")[1];
+}
+
+function getReqData(req){
+    let data = "";
+    return new Promise((res, rej) => {
+        req.on("data", chunk => data += chunk);
+        req.on("end", () => {
+            try{
+                res(JSON.parse(data));
+            }catch(err){
+                rej(err);
+            }
+        });
+        req.on("error", rej);
     });
 }
