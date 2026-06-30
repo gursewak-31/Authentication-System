@@ -35,7 +35,8 @@ export async function CheckUser(data){
     try{
         let conn = await DBconnection();
 
-        let [res] = await conn.execute("SELECT email, password FROM users WHERE email = ? AND password = ?", [data.email ?? "", data.password ?? ""]);
+        console.log(data.email)
+        let [res] = await conn.execute("SELECT email, password FROM users WHERE email = ?", [data.email ?? ""]);
 
         return res[0];
     }catch(err){

@@ -1,15 +1,19 @@
 import * as actions from "../database/DBactions.js";
 import crypto from "crypto";
+import bcrypt from "bcrypt";
 import fs from "fs";
 import path from "path";
+import formidable from "formidable"
 
 export async function userLogin(req, res){
     try{
         let data = await getReqData(req);
-
+        console.log(data)
         let user = await actions.CheckUser(data);
 
-        if(!user){
+        let isValid = await bcrypt.compare(data?.password ?? "", user?.password ?? "");
+
+        if(!isValid){
             res.statusCode = 404;
             res.end(JSON.stringify({status: "failed", msg: "Invalid email or password"}));
             return;
@@ -34,11 +38,14 @@ export async function userSignup(req, res){
         let fields = form.fields;
         let files = form.files;
 
+        console.log(fields.password[0]);
+        let hashedPass = await bcrypt.hash(fields.password[0], 12);
+
         let reqData = {
             firstName: fields.firstname[0],
             lastName: fields.lastname[0],
             email: fields.email[0],
-            password: fields.password[0],
+            password: hashedPass,
             profileImage: files?.profilePhoto?.[0]?.newFilename
         }
 
