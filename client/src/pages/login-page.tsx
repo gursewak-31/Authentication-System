@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
-// import type { User } from "../types";
+import type { User } from "../types";
 
-export function LoginForm(){
+type loginFormProps = {
+    setUser: React.Dispatch<React.SetStateAction<User | null>>,
+    user: User | null
+}
+export function LoginForm({setUser, user}: loginFormProps){
     let [email, setEmail] = useState("");
     let [password, setPassword] = useState("");
     let [invalidField, setInvalidField] = useState({email: false, pass: false});
@@ -33,7 +37,7 @@ export function LoginForm(){
             let res = await ajax.json();
 
             if(ajax.ok){
-                redirect("/dashboard");
+                setUser(res.data);
                 return;
             }
 
@@ -46,6 +50,10 @@ export function LoginForm(){
         }
         setTimeout(() => setError(""), 5000);
     }
+
+    useEffect(() => {
+        redirect("/dashboard"); 
+    }, [user])
 
     function checkFields(){
         let isInvalid = false;
