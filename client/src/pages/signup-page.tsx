@@ -1,13 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import type { User } from "../types"
 
-type signupFormProps = {
-    setUser: React.Dispatch<React.SetStateAction<User | null>>,
-    user: User | null
-}
-export function SignUpFrom({user, setUser}: signupFormProps){
+export function SignUpFrom(){
     let [firstName, setFirstName] = useState("");
     let [lastName, setLastName] = useState("");
     let [email, setEmail] = useState("");
@@ -44,7 +39,7 @@ export function SignUpFrom({user, setUser}: signupFormProps){
             let res = await ajax.json();
 
             if(ajax.ok){
-                setUser(res.data)
+                redirect("/dashboard");
                 return;
             }
 
@@ -57,10 +52,6 @@ export function SignUpFrom({user, setUser}: signupFormProps){
         }
         setTimeout(() => setError(""), 5000);
     }
-
-    useEffect(() => {
-        redirect("/dashboard");
-    }, [user])
 
     function checkFields(){
         let isInvalid = false;
