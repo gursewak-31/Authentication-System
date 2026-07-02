@@ -21,7 +21,7 @@ async function DBsetup(params) {
                                 firstName VARCHAR(20),
                                 lastName VARCHAR(20),
                                 email VARCHAR(50),
-                                password VARCHAR(20),
+                                password VARCHAR(62),
                                 profileImage VARCHAR(100),
                                 lastUpdate DATETIME
         )`);
@@ -29,7 +29,7 @@ async function DBsetup(params) {
         await conn.execute(`CREATE IF NOT EXISTS TABLE login_sessions (
                                 sessionId VARCHAR(20) PRIMARY KEY,
                                 email VARCHAR(50),
-                                password VARCHAR(20)
+                                password VARCHAR(62)
         )`);               
 
         console.log("Database setup");
