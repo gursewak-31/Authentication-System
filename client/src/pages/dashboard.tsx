@@ -85,6 +85,12 @@ export function Dashboard(){
 
             let res = await req.json();
 
+            if(req.status === 401){
+                setUpdateResponse({status: "failed", msg: res.msg});
+                setTimeout(() => redirect("/login"), 3000);
+                return;
+            }
+
             if(req.ok){
                 setUpdateResponse({status: "success", msg: res.msg});
                 if(user) setUser({...user, lastUpdate: new Date(), profileImage: res.image});
