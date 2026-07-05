@@ -38,6 +38,17 @@ export async function userSignup(req, res){
         let fields = form.fields;
         let files = form.files;
 
+        
+        let validateData = checkFields({firstName: fields.firstname[0], lastName: fields.lastname[0], email: fields.email[0], password: fields.password[0]});
+        if(!validateData){
+            if(files?.profilePhoto?.[0].filepath){
+                fs.unlink(files?.profilePhoto?.[0].filepath, (err) => {});
+            }
+            res.statusCode = 400;
+            res.end(JSON.stringify({status: "failed", msg: "Invalid data, Please fill valid credentials."}));
+            return;
+        }
+
         let hashedPass = await bcrypt.hash(fields.password[0], 12);
 
         let reqData = {
@@ -108,6 +119,12 @@ export async function userUpdate(req, res){
         }
 
         let data = await getReqData(req);
+        let validateData = checkFields({firstName: data.firstName, lastName: data.lastName, email: data.email});
+        if(!validateData){
+            res.statusCode = 400;
+            res.end(JSON.stringify({status: "failed", msg: "Invalid data, Please fill valid credentials."}));
+            return;
+        }
 
         let update = await actions.UpdateUser(data, sessionId);
 
@@ -175,6 +192,13 @@ export async function userChangePassword(req, res){
         }
 
         let data = await getReqData(req);
+        let validateData = checkFields({password: data.newPass, password: data.currPass});
+        if(!validateData){
+            res.statusCode = 400;
+            res.end(JSON.stringify({status: "failed", msg: "Invalid data, Please fill valid credentials."}));
+            return;
+        }
+
         let getuser = await actions.GetUser(sessionId);
         let user = await actions.CheckUser(getuser.email);
 
@@ -301,4 +325,30 @@ function getReqData(req){
         });
         req.on("error", rej);
     });
+}
+
+function checkFields(data){
+    let isValid = true;
+    for(let [field, value] of Object.entries(data)){
+        switch(field){
+            case "firstName":
+                if(!/^[a-zA-Z\s]+$/.test(value))
+                    isValid = false;
+                break;
+            case "lastName":
+                if(!/^[a-zA-Z\s]*$/.test(value))
+                    isValid = false;
+                break;
+            case "email":
+                if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+                    isValid = false;
+                break;
+            case "password":
+                if(!/^.{8,}$/.test(value))
+                    isValid = false;
+                break;
+        }
+        if(!isValid) break;
+    }     
+    return isValid;
 }
