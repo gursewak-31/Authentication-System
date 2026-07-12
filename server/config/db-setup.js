@@ -15,10 +15,10 @@ async function DBsetup(params) {
             password: process.env.PASSWORD
         });
 
-        await conn.execute("CREATE DATABASE IF NOT EXISTS authentication_system_db");
-        await conn.execute("USE authentication_system_db");
+        await conn.query("CREATE DATABASE IF NOT EXISTS authentication_system_db");
+        await conn.query("USE authentication_system_db");
 
-        await conn.execute(`CREATE IF NOT EXISTS TABLE users (
+        await conn.query(`CREATE TABLE IF NOT EXISTS users (
                                 id INT AUTO_INCREMENT PRIMARY KEY,
                                 firstName VARCHAR(20),
                                 lastName VARCHAR(20),
@@ -28,7 +28,7 @@ async function DBsetup(params) {
                                 lastUpdate DATETIME
         )`);
 
-        await conn.execute(`CREATE IF NOT EXISTS TABLE login_sessions (
+        await conn.query(`CREATE TABLE IF NOT EXISTS login_sessions (
                                 sessionId VARCHAR(20) PRIMARY KEY,
                                 userId INT
         )`);
