@@ -1,8 +1,10 @@
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
+import path from "path";
 
+let envPath = path.join(import.meta.dirname, "../.env");
 dotenv.config({
-    path: "./Authentication-System/server/.env"
+    path: envPath
 });
 
 async function DBsetup(params) {
@@ -29,7 +31,7 @@ async function DBsetup(params) {
         await conn.execute(`CREATE IF NOT EXISTS TABLE login_sessions (
                                 sessionId VARCHAR(20) PRIMARY KEY,
                                 userId INT
-        )`);               
+        )`);
 
         console.log("Database setup");
         await conn.end();

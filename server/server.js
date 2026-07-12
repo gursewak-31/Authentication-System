@@ -1,10 +1,14 @@
 import http from 'http';
 import dotenv from "dotenv";
 import router from './router.js';
+import path from 'path';
 
 const sessions = {};
 
-dotenv.config();
+let envPath = path.join(import.meta.dirname, "/.env");
+dotenv.config({
+    path: envPath
+});
 const port = process.env.PORT;
 
 let server = http.createServer((req, res) => {

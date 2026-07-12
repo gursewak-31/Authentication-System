@@ -1,7 +1,11 @@
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
+import path from "path";
 
-dotenv.config();
+let envPath = path.join(import.meta.dirname, "../.env");
+dotenv.config({
+    path: envPath
+});
 
 let conn = null;
 export default async function DBconnection(params) {
