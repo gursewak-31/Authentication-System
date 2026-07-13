@@ -33,6 +33,15 @@ async function DBsetup(params) {
                                 userId INT
         )`);
 
+        await conn.execute(`CREATE TABLE IF NOT EXISTS activity_logger (
+                                id INT AUTO_INCREMENT PRIMARY KEY,
+                                user_id INT,
+                                event_type VARCHAR(20),
+                                status VARCHAR(10),
+                                created_at DATETIME,
+                                CONSTRAINT log_status CHECK (status IN ('success', 'failed'))
+        )`);
+
         console.log("Database setup");
         await conn.end();
     }catch(err){

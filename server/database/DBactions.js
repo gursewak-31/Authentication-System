@@ -121,3 +121,16 @@ export async function DeleteAccount(sessionid){
         throw err;
     }
 }
+
+export async function LogActivity(data) {
+    try{
+        let conn = await DBconnection();
+
+        let [res] = await conn.execute("INSERT INTO activity_logger (user_id, event_type, status, created_at) VALUES (?, ?, ?, NOW())", [data.userID, data.activity, data.status]);
+
+        return res.affectedRows;
+    }catch(err){
+        console.log(err);
+        throw err;
+    }
+}

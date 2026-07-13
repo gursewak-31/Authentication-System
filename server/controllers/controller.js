@@ -3,7 +3,8 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import fs from "fs";
 import path from "path";
-import formidable from "formidable"
+import formidable from "formidable";
+import EventEmitter from "events";
 
 export async function userLogin(req, res){
     try{
@@ -14,6 +15,7 @@ export async function userLogin(req, res){
         let isValid = await bcrypt.compare(data?.password ?? "", user?.password ?? "");
 
         if(!isValid || !user){
+            event.emit("log", {userID: null, activity: "login", status: "failed"});
             res.statusCode = 404;
             res.end(JSON.stringify({status: "failed", msg: "Invalid email or password"}));
             return;
@@ -21,6 +23,8 @@ export async function userLogin(req, res){
 
         let sessionId = crypto.randomBytes(8).toString('hex');
         await actions.InsertSession(sessionId, user.id);
+
+        event.emit("log", {userID: user.id, activity: "login", status: "success"});
 
         res.statusCode = 200;
         res.setHeader("Set-Cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
@@ -44,6 +48,7 @@ export async function userSignup(req, res){
             if(files?.profilePhoto?.[0].filepath){
                 fs.unlink(files?.profilePhoto?.[0].filepath, (err) => {});
             }
+            event.emit("log", {userID: null, activity: "signup", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Invalid data, Please fill valid credentials."}));
             return;
@@ -65,6 +70,7 @@ export async function userSignup(req, res){
             if(files?.profilePhoto?.[0].filepath){
                 fs.unlink(files?.profilePhoto?.[0].filepath, (err) => {});
             }
+            event.emit("log", {userID: null, activity: "signup", status: "failed"});
             res.statusCode = 409;
             res.end(JSON.stringify({status: "failed", msg: "Email address already exist."}));
             return;
@@ -74,6 +80,8 @@ export async function userSignup(req, res){
 
         let sessionId = crypto.randomBytes(8).toString('hex');
         let insterSession = await actions.InsertSession(sessionId, insertUser);
+
+        event.emit("log", {userID: insertUser, activity: "signup", status: "success"});
 
         res.setHeader("Set-Cookie", `sessionId=${sessionId}; path=/; HttpOnly; SameSite=Lax`);
         res.end(JSON.stringify({status: "ok"}));
@@ -113,14 +121,17 @@ export async function userUpdate(req, res){
     try{
         let sessionId = getSessionId(req);
         if(!sessionId){
+            event.emit("log", {userID: null, activity: "update", status: "failed"});
             res.statusCode = 401;
             res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
             return;
         }
 
+        let user = await actions.GetUser(sessionId);
         let data = await getReqData(req);
         let validateData = checkFields({firstName: data.firstName, lastName: data.lastName, email: data.email});
         if(!validateData){
+            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Invalid data, Please fill valid credentials."}));
             return;
@@ -129,11 +140,13 @@ export async function userUpdate(req, res){
         let update = await actions.UpdateUser(data, sessionId);
 
         if(!update){
+            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Failed to update data, please try again!"}));
             return;
         }
 
+        event.emit("log", {userID: user.id, activity: "update", status: "success"});
         res.statusCode = 200;
         res.end(JSON.stringify({status: "ok", msg: "Data updated successfully"}));
     }catch(err){
@@ -146,11 +159,13 @@ export async function userUpdateImage(req, res){
     try{
         let sessionId = getSessionId(req);
         if(!sessionId){
+            event.emit("log", {userID: null, activity: "update", status: "failed"});
             res.statusCode = 401;
             res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
             return;
         }
 
+        let user = actions.GetUser(sessionId);
         let form = await uploadMedia(req);
         let fields = form.fields;
         let files = form.files;
@@ -161,6 +176,7 @@ export async function userUpdateImage(req, res){
 
         let updateImage = await actions.UpdateProfileImage({image: image, id: id});
         if(!updateImage){
+            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Failed to update profile image."}));
             return;
@@ -173,6 +189,7 @@ export async function userUpdateImage(req, res){
             }
         }
 
+        event.emit("log", {userID: user.id, activity: "update", status: "success"});
         res.statusCode = 200;
         res.end(JSON.stringify({status: "ok", msg: "Profile Image update successfully.", image: image}));
     }catch(err){
@@ -186,25 +203,31 @@ export async function userChangePassword(req, res){
     try{
         let sessionId = getSessionId(req);
         if(!sessionId){
+            event.emit("log", {userID: null, activity: "update", status: "failed"});
             res.statusCode = 401;
             res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
             return;
         }
 
+        let user = await actions.GetUser(sessionId);
+
         let data = await getReqData(req);
         let validateData = checkFields({password: data.newPass, password: data.currPass});
         if(!validateData){
+            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Invalid data, Please fill valid credentials."}));
             return;
         }
+        console.log(user, "user here")
+        let userData = await actions.CheckUser(user.email);
 
-        let getuser = await actions.GetUser(sessionId);
-        let user = await actions.CheckUser(getuser.email);
+        console.log(1);
 
-        let isValid = await bcrypt.compare(data.currPass, user?.password ?? '');
+        let isValid = await bcrypt.compare(data.currPass, userData?.password ?? '');
 
         if(!isValid){
+            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "wrong current password !"}));
             return;
@@ -214,12 +237,16 @@ export async function userChangePassword(req, res){
             
         let change = await actions.ChangePassword(password, sessionId);
 
+        console.log(1);
+
         if(!change){
+            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Failed to change password !"}));
             return;
         }
 
+        event.emit("log", {userID: user.id, activity: "update", status: "success"});
         res.statusCode = 200;
         res.end(JSON.stringify({status: "ok", msg: "Password changed successfully."}));
     }catch(err){
@@ -238,14 +265,17 @@ export async function userLogout(req, res){
             return;
         }
 
+        let user = await actions.GetUser(sessionId);
         let d = await actions.DeleteSession(sessionId);
 
         if(!d){
+            event.emit("log", {userID: user.id, activity: "logout", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "failed to logout"}));
             return;
         }
 
+        event.emit("log", {userID: user.id, activity: "logout", status: "success"});
         res.statusCode = 200;
         res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
         res.end(JSON.stringify({status: "ok", msg: "logout successfuly"}));
@@ -259,6 +289,7 @@ export async function userDelete(req, res){
     try{
         let sessionId = getSessionId(req);
         if(!sessionId){
+            event.emit("log", {userID: null, activity: "deactivate", status: "failed"});
             res.statusCode = 401;
             res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
             return;
@@ -268,6 +299,7 @@ export async function userDelete(req, res){
         let del = await actions.DeleteAccount(sessionId);
 
         if(!del){
+            event.emit("log", {userID: user.id, activity: "deactivate", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Failed to delete account !"}));
             return;
@@ -280,6 +312,7 @@ export async function userDelete(req, res){
             }
         }
 
+        event.emit("log", {userID: user.id, activity: "deactivate", status: "success"});
         res.statusCode = 200;
         res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
         res.end(JSON.stringify({status: "ok", msg: "Account deleted successfully."}));
@@ -352,3 +385,12 @@ function checkFields(data){
     }     
     return isValid;
 }
+
+let event = new EventEmitter();
+event.on("log", async (args) => {
+    try{
+        await actions.LogActivity(args);
+    }catch(err){
+        throw err
+    }
+});
