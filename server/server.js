@@ -2,6 +2,7 @@ import http from 'http';
 import dotenv from "dotenv";
 import router from './router.js';
 import path from 'path';
+import authMiddleware from './middleware/auth_middleware.js';
 
 const sessions = {};
 
@@ -18,7 +19,13 @@ let server = http.createServer((req, res) => {
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     res.setHeader("Content-Type", "application/json");
 
-    router(req, res);
+    if(req.method == "OPTIONS"){
+        res.statusCode = 204;
+        res.end();
+        return;
+    }
+
+    authMiddleware(req, res, () => router(req, res));
 });
 
 server.listen(port, () => console.log("server start"));

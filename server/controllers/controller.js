@@ -94,13 +94,7 @@ export async function userSignup(req, res){
 
 export async function getUser(req, res){
     try{
-        let sessionId = getSessionId(req);
-        if(!sessionId){
-            res.statusCode = 401;
-            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
-            return;
-        }
-        
+        let sessionId = req.sessionId;
         let user = await actions.GetUser(sessionId);
 
         if(!user){
@@ -119,14 +113,7 @@ export async function getUser(req, res){
 
 export async function userUpdate(req, res){
     try{
-        let sessionId = getSessionId(req);
-        if(!sessionId){
-            event.emit("log", {userID: null, activity: "update", status: "failed"});
-            res.statusCode = 401;
-            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
-            return;
-        }
-
+        let sessionId = req.sessionId;
         let user = await actions.GetUser(sessionId);
         let data = await getReqData(req);
         let validateData = checkFields({firstName: data.firstName, lastName: data.lastName, email: data.email});
@@ -157,14 +144,7 @@ export async function userUpdate(req, res){
 
 export async function userUpdateImage(req, res){
     try{
-        let sessionId = getSessionId(req);
-        if(!sessionId){
-            event.emit("log", {userID: null, activity: "update", status: "failed"});
-            res.statusCode = 401;
-            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
-            return;
-        }
-
+        let sessionId = req.sessionId;
         let user = actions.GetUser(sessionId);
         let form = await uploadMedia(req);
         let fields = form.fields;
@@ -201,20 +181,13 @@ export async function userUpdateImage(req, res){
 
 export async function userChangePassword(req, res){
     try{
-        let sessionId = getSessionId(req);
-        if(!sessionId){
-            event.emit("log", {userID: null, activity: "update", status: "failed"});
-            res.statusCode = 401;
-            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
-            return;
-        }
-
+        let sessionId = req.sessionId;
         let user = await actions.GetUser(sessionId);
 
         let data = await getReqData(req);
         let validateData = checkFields({password: data.newPass, password: data.currPass});
         if(!validateData){
-            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
+            event.emit("log", {userID: user.id, activity: "changePassword", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Invalid data, Please fill valid credentials."}));
             return;
@@ -227,7 +200,7 @@ export async function userChangePassword(req, res){
         let isValid = await bcrypt.compare(data.currPass, userData?.password ?? '');
 
         if(!isValid){
-            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
+            event.emit("log", {userID: user.id, activity: "changePassword", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "wrong current password !"}));
             return;
@@ -240,13 +213,13 @@ export async function userChangePassword(req, res){
         console.log(1);
 
         if(!change){
-            event.emit("log", {userID: user.id, activity: "update", status: "failed"});
+            event.emit("log", {userID: user.id, activity: "changePassword", status: "failed"});
             res.statusCode = 400;
             res.end(JSON.stringify({status: "failed", msg: "Failed to change password !"}));
             return;
         }
 
-        event.emit("log", {userID: user.id, activity: "update", status: "success"});
+        event.emit("log", {userID: user.id, activity: "changePassword", status: "success"});
         res.statusCode = 200;
         res.end(JSON.stringify({status: "ok", msg: "Password changed successfully."}));
     }catch(err){
@@ -258,13 +231,7 @@ export async function userChangePassword(req, res){
 
 export async function userLogout(req, res){
     try{
-        let sessionId = getSessionId(req);
-        if(!sessionId){
-            res.statusCode = 401;
-            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
-            return;
-        }
-
+        let sessionId = req.sessionId;
         let user = await actions.GetUser(sessionId);
         let d = await actions.DeleteSession(sessionId);
 
@@ -287,14 +254,7 @@ export async function userLogout(req, res){
 
 export async function userDelete(req, res){
     try{
-        let sessionId = getSessionId(req);
-        if(!sessionId){
-            event.emit("log", {userID: null, activity: "deactivate", status: "failed"});
-            res.statusCode = 401;
-            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
-            return;
-        }
-
+        let sessionId = req.sessionId;
         let user = await actions.GetUser(sessionId);
         let del = await actions.DeleteAccount(sessionId);
 
@@ -335,14 +295,6 @@ function uploadMedia(request){
             res({fields, files});
         });
     });
-}
-
-function getSessionId(request){
-    let cookie = request.headers.cookie;
-
-    if(!cookie) return null;
-
-    return cookie.split("=")[1];
 }
 
 function getReqData(req){
@@ -386,7 +338,7 @@ function checkFields(data){
     return isValid;
 }
 
-let event = new EventEmitter();
+export let event = new EventEmitter();
 event.on("log", async (args) => {
     try{
         await actions.LogActivity(args);

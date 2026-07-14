@@ -1,12 +1,6 @@
 import * as controller from "./controllers/controller.js"
 
 export default function router(request, response){
-    if(request.method == "OPTIONS"){
-        response.statusCode = 204;
-        response.end();
-        return;
-    }
-
     if(request.method == "POST" && request.url == "/signup"){
         return controller.userSignup(request, response);
     }
