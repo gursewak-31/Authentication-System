@@ -43,7 +43,7 @@ export async function userSignup(req, res){
         let files = form.files;
 
         
-        let validateData = checkFields({firstName: fields.firstname[0], lastName: fields.lastname[0], email: fields.email[0], password: fields.password[0]});
+        let validateData = checkFields({firstName: fields.firstname[0], lastName: fields.lastname[0], email: fields.email[0], currPass: fields.password[0]});
         if(!validateData){
             if(files?.profilePhoto?.[0].filepath){
                 fs.unlink(files?.profilePhoto?.[0].filepath, (err) => {});
@@ -145,7 +145,7 @@ export async function userUpdate(req, res){
 export async function userUpdateImage(req, res){
     try{
         let sessionId = req.sessionId;
-        let user = actions.GetUser(sessionId);
+        let user = await actions.GetUser(sessionId);
         let form = await uploadMedia(req);
         let fields = form.fields;
         let files = form.files;
@@ -163,9 +163,11 @@ export async function userUpdateImage(req, res){
         }
 
         if(oldImage){
-            let oldImage = path.join(import.meta.dirname, "../client/public/assets/profileImages/", )
-            if(fs.existsSync(oldImage)){
-                fs.unlink(oldImage, (err) => {});
+            console.log(oldImage);
+            let oldImagePath = path.join(import.meta.dirname, "../../client/public/assets/profileImages/", oldImage)
+            console.log(oldImagePath);
+            if(fs.existsSync(oldImagePath)){
+                fs.unlink(oldImagePath, (err) => {});
             }
         }
 
@@ -185,7 +187,7 @@ export async function userChangePassword(req, res){
         let user = await actions.GetUser(sessionId);
 
         let data = await getReqData(req);
-        let validateData = checkFields({password: data.newPass, password: data.currPass});
+        let validateData = checkFields({newPass: data.newPass, currPass: data.currPass});
         if(!validateData){
             event.emit("log", {userID: user.id, activity: "changePassword", status: "failed"});
             res.statusCode = 400;
@@ -328,7 +330,8 @@ function checkFields(data){
                 if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
                     isValid = false;
                 break;
-            case "password":
+            case "currPass":
+            case "newPass":
                 if(!/^.{8,}$/.test(value))
                     isValid = false;
                 break;
