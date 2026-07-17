@@ -58,7 +58,6 @@ export function Dashboard(){
             }
 
             if(!req.ok){
-                if(req.status === 500) throw new Error("server error");
                 setUpdateResponse({status: "failed", msg: res.msg});
                 return;
             }
@@ -91,11 +90,11 @@ export function Dashboard(){
                 return;
             }
 
-            if(req.ok){
+            if(!req.ok){
+                setUpdateResponse({status: "failed", msg: res.msg});
+            }else{
                 setUpdateResponse({status: "success", msg: res.msg});
                 if(user) setUser({...user, lastUpdate: new Date(), profileImage: res.image});
-            }else{
-                setUpdateResponse({status: "failed", msg: res.msg});
             }
         }catch(err){
             setUpdateResponse({status: "failed", msg: "Somthing went wrong. please try again later !"});

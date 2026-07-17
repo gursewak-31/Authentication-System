@@ -30,9 +30,7 @@ export async function userLogin(req, res){
         res.setHeader("Set-Cookie", `sessionId=${sessionId}; HttpOnly; SameSite=Lax`);
         res.end(JSON.stringify({status: "ok", data: user}));
     }catch(err){
-        console.log(err)
-        res.statusCode = 500;
-        res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        sendErrorResponse(res, err);
     }
 }
 
@@ -41,7 +39,6 @@ export async function userSignup(req, res){
         let form = await uploadMedia(req);
         let fields = form.fields;
         let files = form.files;
-
         
         let validateData = checkFields({firstName: fields.firstname[0], lastName: fields.lastname[0], email: fields.email[0], currPass: fields.password[0]});
         if(!validateData){
@@ -86,9 +83,7 @@ export async function userSignup(req, res){
         res.setHeader("Set-Cookie", `sessionId=${sessionId}; path=/; HttpOnly; SameSite=Lax`);
         res.end(JSON.stringify({status: "ok"}));
     }catch(err){
-        console.log(err);
-        res.statusCode = 500;
-        res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        sendErrorResponse(res, err);
     }
 }
 
@@ -106,8 +101,7 @@ export async function getUser(req, res){
         res.statusCode = 200;
         res.end(JSON.stringify({status: "ok", data: user}));
     }catch(err){
-        res.statusCode = 500;
-        res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        sendErrorResponse(res, err);
     }
 }
 
@@ -137,13 +131,14 @@ export async function userUpdate(req, res){
         res.statusCode = 200;
         res.end(JSON.stringify({status: "ok", msg: "Data updated successfully"}));
     }catch(err){
-        res.statusCode = 500;
-        res.end(JSON.stringify({status: "error", msg: "Internal server error"}))
+        sendErrorResponse(res, err);
     }
 }
 
 export async function userUpdateImage(req, res){
     try{
+        throw new Error("temp");
+        return;
         let sessionId = req.sessionId;
         let user = await actions.GetUser(sessionId);
         let form = await uploadMedia(req);
@@ -175,9 +170,7 @@ export async function userUpdateImage(req, res){
         res.statusCode = 200;
         res.end(JSON.stringify({status: "ok", msg: "Profile Image update successfully.", image: image}));
     }catch(err){
-        console.log(err)
-        res.statusCode = 500;
-        res.end(JSON.stringify({status: "error", msg: "Interal server error"}));
+        sendErrorResponse(res, err);
     }
 }
 
@@ -194,10 +187,8 @@ export async function userChangePassword(req, res){
             res.end(JSON.stringify({status: "failed", msg: "Invalid data, Please fill valid credentials."}));
             return;
         }
-        console.log(user, "user here")
-        let userData = await actions.CheckUser(user.email);
 
-        console.log(1);
+        let userData = await actions.CheckUser(user.email);
 
         let isValid = await bcrypt.compare(data.currPass, userData?.password ?? '');
 
@@ -212,8 +203,6 @@ export async function userChangePassword(req, res){
             
         let change = await actions.ChangePassword(password, sessionId);
 
-        console.log(1);
-
         if(!change){
             event.emit("log", {userID: user.id, activity: "changePassword", status: "failed"});
             res.statusCode = 400;
@@ -225,9 +214,7 @@ export async function userChangePassword(req, res){
         res.statusCode = 200;
         res.end(JSON.stringify({status: "ok", msg: "Password changed successfully."}));
     }catch(err){
-        console.log(err)
-        res.statusCode = 500;
-        res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        sendErrorResponse(res, err);
     }
 }
 
@@ -249,8 +236,7 @@ export async function userLogout(req, res){
         res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
         res.end(JSON.stringify({status: "ok", msg: "logout successfuly"}));
     }catch(err){
-        res.statusCode = 500;
-        res.end(JSON.stringify({status: "ok", msg: "Internal server error"}));
+        sendErrorResponse(res, err);
     }
 }
 
@@ -279,9 +265,7 @@ export async function userDelete(req, res){
         res.setHeader("Set-Cookie", "sessionId=; Max-Age=0; HttpOnly");
         res.end(JSON.stringify({status: "ok", msg: "Account deleted successfully."}));
     }catch(err){
-        console.log(err);
-        res.statusCode = 500;
-        res.end(JSON.stringify({status: "error", msg: "Internal server error"}));
+        sendErrorResponse(res, err);
     }
 }
 
@@ -339,6 +323,12 @@ function checkFields(data){
         if(!isValid) break;
     }     
     return isValid;
+}
+
+function sendErrorResponse(res, error){
+    console.log(error);
+    res.statusCode = 500;
+    res.end(JSON.stringify({status: "error", msg: "Somthing went wrong. please try again later !"}));
 }
 
 export let event = new EventEmitter();

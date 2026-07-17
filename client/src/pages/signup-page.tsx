@@ -43,9 +43,6 @@ export function SignUpFrom(){
                 return;
             }
 
-            if(ajax.status === 500)
-                throw new Error();
-
             setError(res.msg);
         }catch(err){
             setError("Somthing went wrong. please try again later !");

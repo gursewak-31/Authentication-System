@@ -38,17 +38,21 @@ export function AccountSettings(){
 
             let res = await req.json();
 
-            if(req.ok){
-                setUpdateResponse({status: "success", msg: res.msg})
-                setNewPassword("");
-                setCurrPassword("");
-                setConfPassword("");
-            }else{
-                setUpdateResponse({status: "failed", msg: res.msg});
-            }
             if(req.status === 401){
+                setUpdateResponse({status: "failed", msg: res.msg});
                 setTimeout(() => redirect("/login"), 3000);
+                return;
             }
+
+            if(!req.ok){
+                setUpdateResponse({status: "failed", msg: res.msg});
+                return;
+            }
+
+            setUpdateResponse({status: "success", msg: res.msg})
+            setNewPassword("");
+            setCurrPassword("");
+            setConfPassword("");
         }catch(err){
             setUpdateResponse({status: "success", msg: "Something went wrong, please try again!"});
         }
@@ -65,15 +69,19 @@ export function AccountSettings(){
             
             let res = await req.json();
 
-            if(req.ok){
-                setDeleteResponse({status: "success", msg: res.msg});
-                setTimeout(() => redirect("/login"), 3000);
-            }else{
-                setDeleteResponse({status: "failed", msg: res.msg});
-            }
             if(req.status === 401){
+                setDeleteResponse({status: "failed", msg: res.msg});
                 setTimeout(() => redirect("/login"), 3000);
+                return;
             }
+
+            if(!req.ok){
+                setDeleteResponse({status: "failed", msg: res.msg});
+                return;
+            }
+
+            setDeleteResponse({status: "success", msg: res.msg});
+            setTimeout(() => redirect("/login"), 3000);
         }catch(err){
             setDeleteResponse({status: "failed", msg: "Something went wrong, please try again!"});
         }
