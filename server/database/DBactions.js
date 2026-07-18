@@ -1,12 +1,24 @@
 import DBconnection from "./DBconnection.js";
 
-export async function InsertSession(sessionid, userId){
+export async function InsertSession(sessionid, userId, expireAt){
     try{
         let conn = await DBconnection();
 
-        await conn.execute("INSERT INTO login_sessions (sessionId, userId) VALUES (?, ?)", [sessionid, userId]);
+        await conn.execute("INSERT INTO login_sessions (sessionId, userId, expireAt) VALUES (?, ?, ?)", [sessionid, userId, expireAt]);
 
         return;
+    }catch(err){
+        console.log(err);
+        throw err;
+    }
+}
+
+export async function GetSession(sessionId){
+    try{
+        let conn = await DBconnection();
+
+        let [res] = await conn.execute("SELECT * FROM login_sessions WHERE sessionId = ?", [sessionId]);
+        return res[0];
     }catch(err){
         console.log(err);
         throw err;

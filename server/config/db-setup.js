@@ -30,7 +30,8 @@ async function DBsetup(params) {
 
         await conn.query(`CREATE TABLE IF NOT EXISTS login_sessions (
                                 sessionId VARCHAR(20) PRIMARY KEY,
-                                userId INT
+                                userId INT,
+                                expireAt DATETIME
         )`);
 
         await conn.execute(`CREATE TABLE IF NOT EXISTS activity_logger (

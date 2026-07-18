@@ -22,7 +22,8 @@ export async function userLogin(req, res){
         }
 
         let sessionId = crypto.randomBytes(8).toString('hex');
-        await actions.InsertSession(sessionId, user.id);
+        let expireTime = new Date(Date.now() + 48 * 60 * 60 * 1000);
+        await actions.InsertSession(sessionId, user.id, expireTime);
 
         event.emit("log", {userID: user.id, activity: "login", status: "success"});
 
@@ -76,7 +77,8 @@ export async function userSignup(req, res){
         let insertUser = await actions.InsertUser(reqData); // it return user id on inserted user
 
         let sessionId = crypto.randomBytes(8).toString('hex');
-        let insterSession = await actions.InsertSession(sessionId, insertUser);
+        let expireTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        let insterSession = await actions.InsertSession(sessionId, insertUser, expireTime);
 
         event.emit("log", {userID: insertUser, activity: "signup", status: "success"});
 
@@ -90,6 +92,15 @@ export async function userSignup(req, res){
 export async function getUser(req, res){
     try{
         let sessionId = req.sessionId;
+        let session = await actions.GetSession(sessionId);
+
+        if(!session || session.expireAt < new Date()){
+            if(session) await actions.DeleteSession(sessionId);
+            res.statusCode = 401;
+            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
+            return;
+        }
+
         let user = await actions.GetUser(sessionId);
 
         if(!user){
@@ -108,6 +119,15 @@ export async function getUser(req, res){
 export async function userUpdate(req, res){
     try{
         let sessionId = req.sessionId;
+        let session = await actions.GetSession(sessionId);
+
+        if(!session || session.expireAt < new Date()){
+            if(session) await actions.DeleteSession(sessionId);
+            res.statusCode = 401;
+            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
+            return;
+        }
+
         let user = await actions.GetUser(sessionId);
         let data = await getReqData(req);
         let validateData = checkFields({firstName: data.firstName, lastName: data.lastName, email: data.email});
@@ -137,9 +157,16 @@ export async function userUpdate(req, res){
 
 export async function userUpdateImage(req, res){
     try{
-        throw new Error("temp");
-        return;
         let sessionId = req.sessionId;
+        let session = await actions.GetSession(sessionId);
+
+        if(!session || session.expireAt < new Date()){
+            if(session) await actions.DeleteSession(sessionId);
+            res.statusCode = 401;
+            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
+            return;
+        }
+
         let user = await actions.GetUser(sessionId);
         let form = await uploadMedia(req);
         let fields = form.fields;
@@ -158,9 +185,7 @@ export async function userUpdateImage(req, res){
         }
 
         if(oldImage){
-            console.log(oldImage);
             let oldImagePath = path.join(import.meta.dirname, "../../client/public/assets/profileImages/", oldImage)
-            console.log(oldImagePath);
             if(fs.existsSync(oldImagePath)){
                 fs.unlink(oldImagePath, (err) => {});
             }
@@ -177,6 +202,15 @@ export async function userUpdateImage(req, res){
 export async function userChangePassword(req, res){
     try{
         let sessionId = req.sessionId;
+        let session = await actions.GetSession(sessionId);
+
+        if(!session || session.expireAt < new Date()){
+            if(session) await actions.DeleteSession(sessionId);
+            res.statusCode = 401;
+            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
+            return;
+        }
+
         let user = await actions.GetUser(sessionId);
 
         let data = await getReqData(req);
@@ -200,7 +234,6 @@ export async function userChangePassword(req, res){
         }
 
         let password = await bcrypt.hash(data.newPass, 12);
-            
         let change = await actions.ChangePassword(password, sessionId);
 
         if(!change){
@@ -221,6 +254,15 @@ export async function userChangePassword(req, res){
 export async function userLogout(req, res){
     try{
         let sessionId = req.sessionId;
+        let session = await actions.GetSession(sessionId);
+
+        if(!session || session.expireAt < new Date()){
+            if(session) await actions.DeleteSession(sessionId);
+            res.statusCode = 401;
+            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
+            return;
+        }
+
         let user = await actions.GetUser(sessionId);
         let d = await actions.DeleteSession(sessionId);
 
@@ -243,6 +285,15 @@ export async function userLogout(req, res){
 export async function userDelete(req, res){
     try{
         let sessionId = req.sessionId;
+        let session = await actions.GetSession(sessionId);
+
+        if(!session || session.expireAt < new Date()){
+            if(session) await actions.DeleteSession(sessionId);
+            res.statusCode = 401;
+            res.end(JSON.stringify({status: "failed", msg: "Session expired. Please login again."}));
+            return;
+        }
+
         let user = await actions.GetUser(sessionId);
         let del = await actions.DeleteAccount(sessionId);
 
